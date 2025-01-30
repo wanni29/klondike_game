@@ -10,7 +10,8 @@ dependencies:
   flutter:
     sdk: flutter
   cupertino_icons: ^1.0.8
-  flame: ^1.23.0
+  # ^1.22.0을 자동으로 업데이트를 진행해서 다운로드를 하게 됨
+  flame: 1.22.0 
 
 dev_dependencies:
   flutter_test:

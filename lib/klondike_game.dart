@@ -50,17 +50,21 @@ class KlondikeGame extends FlameGame {
     world.addAll(foundations);
     world.addAll(piles);
 
+    // 화면에 얼마만큼 보여줄꺼냐
     camera.viewfinder.visibleGameSize =
         Vector2(cardWidth * 7 + cardGap * 8, 4 * cardHeight + 3 * cardGap);
+    // 뷰포트를 어디에 배치할것이냐
     camera.viewfinder.position = Vector2(cardWidth * 3.5 + cardGap * 4, 0);
+    // 뷰포트를 배치했을때 기준점을 어디로 할꺼냐
     camera.viewfinder.anchor = Anchor.topCenter;
   }
 }
 
+// 하나의 이미지를 짤라서 그림을 붙이는 클래스 : Sprite
 Sprite klondikeSprite(double x, double y, double width, double height) {
   return Sprite(
-    Flame.images.fromCache('klondike-sprites.png'),
-    srcPosition: Vector2(x, y),
-    srcSize: Vector2(width, height),
+    Flame.images.fromCache('klondike-sprites.png'), // 자를 이미지
+    srcPosition: Vector2(x, y), // 시작점
+    srcSize: Vector2(width, height), // 크기
   );
 }

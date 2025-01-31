@@ -1,6 +1,9 @@
+import 'dart:math';
+
 import 'package:flame/components.dart';
 import 'package:flame/flame.dart';
 import 'package:flame/game.dart';
+import 'package:klondike_game/components/card.dart';
 import 'package:klondike_game/components/foundation.dart';
 import 'package:klondike_game/components/pile.dart';
 import 'package:klondike_game/components/stock.dart';
@@ -57,6 +60,21 @@ class KlondikeGame extends FlameGame {
     camera.viewfinder.position = Vector2(cardWidth * 3.5 + cardGap * 4, 0);
     // 뷰포트를 배치했을때 기준점을 어디로 할꺼냐
     camera.viewfinder.anchor = Anchor.topCenter;
+
+    final random = Random();
+    for (var i = 0; i < 7; i++) {
+      for (var j = 0; j < 4; j++) {
+        final card = Card(random.nextInt(13) + 1, random.nextInt(4))
+          ..position = Vector2(100 + i * 1150, 100 + j * 1500)
+          // ..position = Vector2(100 + i * 1150, 100 * 3* 1500)
+          ..addToParent(world);
+
+        // 90%의 확률로 카드가 뒤집힌다.
+        if (random.nextDouble() < 0.9) {
+          card.flip();
+        }
+      }
+    }
   }
 }
 

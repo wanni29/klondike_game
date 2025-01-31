@@ -2,20 +2,25 @@ import 'dart:math';
 import 'dart:ui';
 
 import 'package:flame/components.dart';
+import 'package:flame/events.dart';
+import 'package:klondike_game/components/tableau_pile.dart';
 import 'package:klondike_game/klondike_game.dart';
+import 'package:klondike_game/pile.dart';
 import 'package:klondike_game/rank.dart';
 import 'package:klondike_game/suit.dart';
 
-class Card extends PositionComponent {
+class Card extends PositionComponent with DragCallbacks {
   Card(int intRank, int intSuit)
       : rank = Rank.fromInt(intRank),
         suit = Suit.fromInt(intSuit),
-        _faceUp = false,
         super(size: KlondikeGame.cardSize);
 
   final Rank rank;
   final Suit suit;
-  bool _faceUp; // 카드 앞-뒤
+  Pile? pile;
+  bool _faceUp = false; // 카드 앞-뒤
+  bool _isDragging = false;
+  final List<Card> attachedCards = [];
 
   // 이건 람다식이 아닌 Dart의 getter와 setter 이다.
   bool get isFaceUp => _faceUp;
@@ -71,7 +76,6 @@ class Card extends PositionComponent {
     ..color = const Color(0xff7ab2e8)
     ..style = PaintingStyle.stroke
     ..strokeWidth = 10;
-
   static final blueFilter = Paint()
     ..colorFilter = const ColorFilter.mode(
       Color(0x880d8bff),
@@ -81,7 +85,6 @@ class Card extends PositionComponent {
   static final Sprite redJack = klondikeSprite(81, 565, 562, 488);
   static final Sprite redQueen = klondikeSprite(717, 541, 486, 515);
   static final Sprite redKing = klondikeSprite(1305, 532, 407, 549);
-
   static final Sprite blackJack = klondikeSprite(81, 565, 562, 488)
     ..paint = blueFilter;
   static final Sprite blackQueen = klondikeSprite(717, 541, 486, 515)
@@ -102,8 +105,6 @@ class Card extends PositionComponent {
     _drawSprite(canvas, rankSprite, 0.1, 0.08, rotate: true);
     _drawSprite(canvas, suitSprite, 0.1, 0.18, scale: 0.5);
     _drawSprite(canvas, suitSprite, 0.1, 0.18, scale: 0.5, rotate: true);
-
-    // 카드 안에 그림이 어떻게 그려질것인가
     switch (rank.value) {
       case 1:
         _drawSprite(canvas, suitSprite, 0.5, 0.5, scale: 2.5);
@@ -202,6 +203,66 @@ class Card extends PositionComponent {
 
     if (rotate) {
       canvas.restore();
+    }
+  }
+
+  @override
+  void onDragStart(DragStartEvent event) {
+    super.onDragStart(event);
+    if (pile?.canMoveCard(this) ?? false) {
+      _isDragging = true;
+      priority = 100; // 이게 무엇을 의미하는지 알아내.
+      if (pile is TableauPile) {
+        attachedCards.clear();
+        final extraCards = (pile! as TableauPile).cardsOnTop(this);
+        for (final card in extraCards) {
+          card.priority = attachedCards.length + 101;
+          attachedCards.add(card);
+        }
+      }
+    }
+  }
+
+  @override
+  void onDragUpdate(DragUpdateEvent event) {
+    if (!_isDragging) {
+      return;
+    }
+
+    final delta = event.localDelta;
+    position.add(delta);
+    attachedCards.forEach((card) => card.position.add(delta));
+  }
+
+  @override
+  void onDragEnd(DragEndEvent event) {
+    super.onDragEnd(event);
+    if (!_isDragging) {
+      return;
+    }
+
+    _isDragging = false;
+
+    final dropPiles = parent!
+        .componentsAtPoint(position + size / 2)
+        .whereType<Pile>()
+        .toList();
+
+    if (dropPiles.isNotEmpty) {
+      if (dropPiles.first.canAcceptCard(this)) {
+        pile!.removeCard(this);
+        dropPiles.first.acquireCard(this);
+        if (attachedCards.isNotEmpty) {
+          attachedCards.forEach((card) => dropPiles.first.acquireCard(card));
+          attachedCards.clear();
+        }
+        return;
+      }
+    }
+    pile!.returnCard(this);
+    if (attachedCards.isNotEmpty) {
+      attachedCards.forEach((card) => pile!.returnCard(card));
+      attachedCards.clear();
     }
   }
 }

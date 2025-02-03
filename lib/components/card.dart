@@ -2,7 +2,9 @@ import 'dart:math';
 import 'dart:ui';
 
 import 'package:flame/components.dart';
+import 'package:flame/effects.dart';
 import 'package:flame/events.dart';
+import 'package:flutter/material.dart';
 import 'package:klondike_game/components/tableau_pile.dart';
 import 'package:klondike_game/klondike_game.dart';
 import 'package:klondike_game/pile.dart';
@@ -20,6 +22,8 @@ class Card extends PositionComponent with DragCallbacks {
   Pile? pile;
   bool _faceUp = false; // 카드 앞-뒤
   bool _isDragging = false;
+  Vector2 _whereCardStarted = Vector2(0, 0);
+
   final List<Card> attachedCards = [];
 
   // 이건 람다식이 아닌 Dart의 getter와 setter 이다.
@@ -211,7 +215,9 @@ class Card extends PositionComponent with DragCallbacks {
     super.onDragStart(event);
     if (pile?.canMoveCard(this) ?? false) {
       _isDragging = true;
-      priority = 100; // 이게 무엇을 의미하는지 알아내.
+      priority = 100;
+
+      _whereCardStarted = Vector2(position.x, position.y);
       if (pile is TableauPile) {
         attachedCards.clear();
         final extraCards = (pile! as TableauPile).cardsOnTop(this);
@@ -259,10 +265,47 @@ class Card extends PositionComponent with DragCallbacks {
         return;
       }
     }
-    pile!.returnCard(this);
+
+    doMove(
+      _whereCardStarted,
+      onComplete: () {
+        pile!.returnCard(this);
+      },
+    );
     if (attachedCards.isNotEmpty) {
-      attachedCards.forEach((card) => pile!.returnCard(card));
-      attachedCards.clear();
+      attachedCards.forEach((card) {
+        final offset = card.position - position;
+        card.doMove(_whereCardStarted + offset, onComplete: () {
+          pile!.returnCard(card);
+        });
+      });
     }
+  }
+
+  void doMove(
+    // 처음 위치를 잡기위해서 to로 지정
+    // 위치값을 알아야하기에 단순한 int값이 아닌
+    // Vector2 로 지정하여 위치값을 설정
+    Vector2 to, {
+    double speed = 10.0,
+    double start = 0.0,
+    // 단순한 곡선이 아닌,
+    // 효과 시간을 감속할지 가속할지 결정하는 시간 곡선임
+    // easeOutQuad -> 점점 느려지면서 멈춘다.
+    Curve curve = Curves.easeOutQuad,
+    VoidCallback? onComplete,
+  }) {
+    assert(speed > 0.0, 'Speed must be > 0 widths per second');
+    final dt = (to - position).length / (speed * size.x);
+    assert(dt > 0.0, 'Distance to move must be > 0');
+    // priority가 우선순위를 의미하는데
+    // Flame안에서 priority가 클수록 렌더링 순서가 앞에 위치한다.
+    // 즉, 이동 중에는 우선순위를 높여서 잘 보이기 위함인 코드
+    priority = 100;
+    add(MoveToEffect(
+        to, EffectController(duration: dt, startDelay: start, curve: curve),
+        onComplete: () {
+      onComplete?.call();
+    }));
   }
 }

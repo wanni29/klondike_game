@@ -3,7 +3,9 @@ import 'package:klondike_game/components/card.dart';
 import 'package:klondike_game/klondike_game.dart';
 import 'package:klondike_game/pile.dart';
 
-class WastePile extends PositionComponent implements Pile {
+class WastePile extends PositionComponent
+    with HasGameReference<KlondikeGame>
+    implements Pile {
   WastePile({super.position}) : super(size: KlondikeGame.cardSize);
 
   final List<Card> _cards = [];
@@ -45,10 +47,15 @@ class WastePile extends PositionComponent implements Pile {
   }
 
   void _fanOutTopCards() {
+    if (game.klondikeDraw == 1) {
+      return;
+    }
+
     final n = _cards.length;
     for (var i = 0; i < n; i++) {
       _cards[i].position = position;
     }
+
     if (n == 2) {
       _cards[1].position.add(_fanOffset);
     } else if (n >= 3) {

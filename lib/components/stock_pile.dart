@@ -7,7 +7,9 @@ import 'package:klondike_game/components/waste_pile.dart';
 import 'package:klondike_game/klondike_game.dart';
 import 'package:klondike_game/pile.dart';
 
-class StockPile extends PositionComponent with TapCallbacks implements Pile {
+class StockPile extends PositionComponent
+    with TapCallbacks, HasGameReference<KlondikeGame>
+    implements Pile {
   StockPile({super.position}) : super(size: KlondikeGame.cardSize);
 
   final List<Card> _cards = [];
@@ -29,6 +31,8 @@ class StockPile extends PositionComponent with TapCallbacks implements Pile {
     assert(card.isFaceDown);
     card.pile = this;
     card.position = position;
+    // priority는 우선순위를 나타내는데,
+    // 카드가 추가된 순서대로 위에 차곡 차곡 쌓인다고 생각을 하면 된다.
     card.priority = _cards.length;
     _cards.add(card);
   }
@@ -42,7 +46,7 @@ class StockPile extends PositionComponent with TapCallbacks implements Pile {
         acquireCard(card);
       });
     } else {
-      for (var i = 0; i < 3; i++) {
+      for (var i = 0; i < game.klondikeDraw; i++) {
         if (_cards.isNotEmpty) {
           final card = _cards.removeLast();
           card.flip();
@@ -53,13 +57,13 @@ class StockPile extends PositionComponent with TapCallbacks implements Pile {
   }
 
   final _borderPaint = Paint()
-    ..style = PaintingStyle.stroke
-    ..strokeWidth = 10
-    ..color = const Color(0xFF3F5B5D);
+    ..style = PaintingStyle.stroke // 내용물의 색을 채우지 않고 테두리만 그린다.
+    ..strokeWidth = 10 // 테두리 굵기
+    ..color = const Color(0xFF3F5B5D); // 테두리 색상
   final _circlePaint = Paint()
     ..style = PaintingStyle.stroke
     ..strokeWidth = 100
-    ..color = const Color(0x883F5B5D);
+    ..color = const Color(0xFF3F5B5D);
 
   @override
   void render(Canvas canvas) {

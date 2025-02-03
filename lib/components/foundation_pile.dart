@@ -55,7 +55,7 @@ class FoundationPile extends PositionComponent implements Pile {
 
   late final _suitPaint = Paint()
     ..color = suit.isRed ? const Color(0x3a000000) : const Color(0x64000000)
-    ..blendMode = BlendMode.luminosity;
+    ..blendMode = BlendMode.luminosity; // 회색빛으로 흐릿한 효과
 
   @override
   void render(Canvas canvas) {

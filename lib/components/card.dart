@@ -21,6 +21,8 @@ class Card extends PositionComponent with DragCallbacks {
   final Suit suit;
   Pile? pile;
   bool _faceUp = false; // 카드 앞-뒤
+  bool _isAnimatedFlip = false;
+  bool _isFaceUpView = false;
   bool _isDragging = false;
   Vector2 _whereCardStarted = Vector2(0, 0);
 
@@ -29,7 +31,16 @@ class Card extends PositionComponent with DragCallbacks {
   // 이건 람다식이 아닌 Dart의 getter와 setter 이다.
   bool get isFaceUp => _faceUp;
   bool get isFaceDown => !_faceUp;
-  void flip() => _faceUp = !_faceUp;
+  void flip() {
+    if (_isAnimatedFlip) {
+      // Let the animation determine the FaceUp/FaceDown state.
+      _faceUp = _isFaceUpView;
+    } else {
+      // No animation : flip and render the card immediately.
+      _faceUp = !_faceUp;
+      _isFaceUpView = _faceUp;
+    }
+  }
 
   @override
   String toString() => rank.label + suit.label; // "10⬥"
@@ -39,7 +50,7 @@ class Card extends PositionComponent with DragCallbacks {
   // GameLoop라는 개념에 대해서 자세하게 공부해야 이를 이해 할 수 있음
   @override
   void render(Canvas canvas) {
-    if (_faceUp) {
+    if (_isFaceUpView) {
       _renderFront(canvas);
     } else {
       _renderBack(canvas);
@@ -307,5 +318,41 @@ class Card extends PositionComponent with DragCallbacks {
         onComplete: () {
       onComplete?.call();
     }));
+  }
+
+  void turnFaceUp({
+    double time = 0.3,
+    double start = 0.0,
+    VoidCallback? onComplete,
+  }) {
+    assert(!_isFaceUpView, 'Card must be face-down before turning face-up.');
+    assert(time > 0.0, 'Time to turn card over must be > 0');
+    _isAnimatedFlip = true;
+    anchor = Anchor.topCenter;
+    position += Vector2(width / 2, 0);
+    priority = 100;
+    add(
+      ScaleEffect.to(
+        Vector2(scale.x / 100, scale.y),
+        EffectController(
+          startDelay: start,
+          curve: Curves.easeOutSine,
+          duration: time / 2,
+          onMax: () {
+            _isFaceUpView = true;
+          },
+          reverseDuration: time / 2,
+          onMin: () {
+            _isAnimatedFlip = false;
+            _faceUp = true;
+            anchor = Anchor.topLeft;
+            position -= Vector2(width / 2, 0);
+          },
+        ),
+        onComplete: () {
+          onComplete?.call();
+        },
+      ),
+    );
   }
 }

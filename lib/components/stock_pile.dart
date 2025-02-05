@@ -1,46 +1,54 @@
 import 'dart:ui';
 
 import 'package:flame/components.dart';
-import 'package:flame/events.dart';
-import 'package:klondike_game/components/card.dart';
-import 'package:klondike_game/components/waste_pile.dart';
-import 'package:klondike_game/klondike_game.dart';
-import 'package:klondike_game/pile.dart';
+
+import '../klondike_game.dart';
+import '../pile.dart';
+import 'card.dart';
+import 'waste_pile.dart';
 
 class StockPile extends PositionComponent
-    with TapCallbacks, HasGameReference<KlondikeGame>
+    with HasGameReference<KlondikeGame>
     implements Pile {
   StockPile({super.position}) : super(size: KlondikeGame.cardSize);
 
+  /// Which cards are currently placed onto this pile. The first card in the
+  /// list is at the bottom, the last card is on top.
   final List<Card> _cards = [];
 
+  //#region Pile API
+
   @override
-  bool canMoveCard(Card card) => false;
+  bool canMoveCard(Card card, MoveMethod method) => false;
+  // Can be moved by onTapUp callback (see below).
 
   @override
   bool canAcceptCard(Card card) => false;
 
   @override
-  void removeCard(Card card) => throw StateError('cannot remove cards');
+  void removeCard(Card card, MoveMethod method) =>
+      throw StateError('cannot remove cards');
 
   @override
-  void returnCard(Card card) => throw StateError('cannot remove cards');
+  // Card cannot be removed but could have been dragged out of place.
+  void returnCard(Card card) => card.priority = _cards.indexOf(card);
 
   @override
   void acquireCard(Card card) {
     assert(card.isFaceDown);
     card.pile = this;
     card.position = position;
-    // priority는 우선순위를 나타내는데,
-    // 카드가 추가된 순서대로 위에 차곡 차곡 쌓인다고 생각을 하면 된다.
     card.priority = _cards.length;
     _cards.add(card);
   }
 
-  @override
-  void onTapUp(TapUpEvent event) {
+  //#endregion
+
+  void handleTapUp(Card card) {
     final wastePile = parent!.firstChild<WastePile>()!;
     if (_cards.isEmpty) {
+      assert(card.isBaseCard, 'Stock Pile is empty, but no Base Card present');
+      card.position = position; // Force Base Card (back) into correct position.
       wastePile.removeAllCards().reversed.forEach((card) {
         card.flip();
         acquireCard(card);
@@ -49,26 +57,37 @@ class StockPile extends PositionComponent
       for (var i = 0; i < game.klondikeDraw; i++) {
         if (_cards.isNotEmpty) {
           final card = _cards.removeLast();
-          card.flip();
-          wastePile.acquireCard(card);
+          card.doMoveAndFlip(
+            wastePile.position,
+            whenDone: () {
+              wastePile.acquireCard(card);
+            },
+          );
         }
       }
     }
   }
 
+  //#region Rendering
+
   final _borderPaint = Paint()
-    ..style = PaintingStyle.stroke // 내용물의 색을 채우지 않고 테두리만 그린다.
-    ..strokeWidth = 10 // 테두리 굵기
-    ..color = const Color(0xFF3F5B5D); // 테두리 색상
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = 10
+    ..color = const Color(0xFF3F5B5D);
   final _circlePaint = Paint()
     ..style = PaintingStyle.stroke
     ..strokeWidth = 100
-    ..color = const Color(0xFF3F5B5D);
+    ..color = const Color(0x883F5B5D);
 
   @override
   void render(Canvas canvas) {
     canvas.drawRRect(KlondikeGame.cardRRect, _borderPaint);
-    canvas.drawCircle(Offset(width / 2, height / 2),
-        KlondikeGame.cardWidth * 0.3, _circlePaint);
+    canvas.drawCircle(
+      Offset(width / 2, height / 2),
+      KlondikeGame.cardWidth * 0.3,
+      _circlePaint,
+    );
   }
+
+  //#endregion
 }
